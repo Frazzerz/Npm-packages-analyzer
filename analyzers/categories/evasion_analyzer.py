@@ -52,16 +52,13 @@ class EvasionAnalyzer:
         evasion.obfuscation_patterns_count, evasion.list_obfuscation_patterns = UtilsForAnalyzer.detect_patterns(content, self.OBFUSCATION_PATTERNS)
         evasion.platform_detections_count, evasion.list_platform_detections = UtilsForAnalyzer.detect_patterns(content, self.PLATFORM_PATTERNS)
 
-        '''
+        
         if package_info['info'] == SourceType.DEOBFUSCATED:
             evasion.code_type = CodeType.DEOBFUSCATED
         elif (self._detect_obfuscated_code(evasion.obfuscation_patterns_count, max(len(r) for r in content.splitlines() ) if content.splitlines() else 0 )):
-        '''
-        if self._detect_obfuscated_code(evasion.obfuscation_patterns_count, max(len(r) for r in content.splitlines() ) if content.splitlines() else 0 ):
             evasion.code_type = CodeType.OBFUSCATED
         else:
             evasion.code_type = CodeType.CLEAR
-        
         return evasion
     
     @staticmethod

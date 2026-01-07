@@ -1,6 +1,5 @@
 from typing import Dict, Optional
 from zipfile import Path
-from git import Repo
 from utils import NPMClient
 from datetime import datetime, timezone
 from utils import synchronized_print
@@ -10,6 +9,7 @@ from models.composed_metrics.aggregate_metrics.account import AccountVersion
 
 class AccountAnalyzer:
     """Analyzes account compromise & release integrity anomalies"""
+    '''
     _npm_cache: Dict[str, Dict] = {}
     UTC_MIN_DATETIME = datetime.min.replace(tzinfo=timezone.utc)
 
@@ -30,7 +30,7 @@ class AccountAnalyzer:
         
         AccountAnalyzer._npm_cache[self.package_name] = npm_data
         return npm_data
-    
+    '''
     def analyze(self, version: str, git_repo_path: Path, source: SourceType) -> AccountVersion:
         account = AccountVersion()
         return account  # Temporary return to skip analysis

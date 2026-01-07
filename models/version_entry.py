@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 class SourceType(Enum):
-    #DEOBFUSCATED = "deobfuscated"
+    DEOBFUSCATED = "deobfuscated"
     TARBALL = "tarball"
 @dataclass
 class VersionEntry:

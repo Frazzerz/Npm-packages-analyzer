@@ -6,7 +6,7 @@ from reporters import CSVReporter, TextReporter
 from utils import FileHandler, synchronized_print, Deobfuscator
 from .aggregate_metrics_by_tag import AggregateMetricsByTag
 from .code_analyzer import CodeAnalyzer
-from models import SourceType
+from models import SourceType, CodeType
 class VersionAnalyzer:
     """Handles analysis of versions from a Git repository and local versions"""
     def __init__(self, max_processes: int = 1, package_name: str = "", output_dir: Path = Path(".")):
@@ -30,7 +30,7 @@ class VersionAnalyzer:
                 # curr_metrics is the list of FileMetrics for all files in the current version
                 # current_metrics e.g. list[FileMetrics(package='example', version='1.0.0', file_path='index.js', ...), FileMetrics(...), ...]
                 curr_metrics = self._analyze_version(entry.name, repo_path, entry.source)
-                '''
+                
                 # Identify obfuscated JS files and attempt deobfuscation
                 obfuscated_files = [f for f in curr_metrics if f.evasion.code_type == CodeType.OBFUSCATED and f.file_path.endswith('.js')]
                 if obfuscated_files:
@@ -54,7 +54,7 @@ class VersionAnalyzer:
                             source=SourceType.DEOBFUSCATED
                         )
                         curr_metrics.append(deob)
-                '''
+                
                 synchronized_print(f"    Analyzed {len(curr_metrics)} files")
                 
                 # aggregate_metrics_by_tag is the aggregation of all metrics from the all files in the current version

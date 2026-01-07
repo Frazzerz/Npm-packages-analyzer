@@ -132,7 +132,7 @@ class NPMClient:
             return None
         
     def download_package_versions_tarball(self, download_dir: Path = Path("tarballs")) -> list[VersionEntry]:
-        """Download the tarball for 50 lastest versions of the package from NPM registry"""
+        """Download the tarball for 20 lastest versions of the package from NPM registry"""
         data = self.get_npm_package_data()
         if not data or 'versions' not in data:
             synchronized_print(f"No version data found for {self.pkg_name}")
@@ -142,9 +142,13 @@ class NPMClient:
             synchronized_print(f"No versions found for {self.pkg_name}")
             return None
         
-        if len(data['versions']) > 50:
-            synchronized_print(f"Found {len(data['versions'])} versions for {self.pkg_name}, but i consider only the last 50")
-        versions = list(data['versions'].keys())[-50:] # Get the last 50 versions, if more exist. No error if less. Assuming they are in order
+        if len(data['versions']) < 20:
+            synchronized_print(f"Not enough versions for analysis, for {self.pkg_name}, found only {len(data['versions'])} versions. Skipping package.")
+            return None
+        
+        if len(data['versions']) >= 20:
+            synchronized_print(f"Found {len(data['versions'])} versions for {self.pkg_name}, but i consider only the last 20")
+        versions = list(data['versions'].keys())[-20:] # Get the last 20 versions, if more exist. No error if less. Assuming they are in order
 
         pkg_dir = download_dir / self.pkg_name.replace('/', '_')
         pkg_dir.mkdir(parents=True, exist_ok=True)

@@ -22,7 +22,7 @@ class AggregateMetricsByTag:
 
 
         # Calculate metrics for account categories
-        account = AccountAnalyzer(pkg_name=version_metrics.package)
+        account = AccountAnalyzer()#(pkg_name=version_metrics.package)
         account_metrics = account.analyze(version_metrics.version, repo_path, source)
         version_metrics.account.npm_maintainers = account_metrics.npm_maintainers
         version_metrics.account.npm_hash_commit = account_metrics.npm_hash_commit
