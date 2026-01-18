@@ -6,14 +6,14 @@ from analyzers import PackageAnalyzer
 from reporters import TextReporter
 from utils import FileHandler
 
-def analyze_single_package(package, out_dir, package_index, total_packages, workers) -> None:
+def analyze_single_package(package, out_dir, package_index, total_packages, include_local, local_dir, workers) -> None:
     """Analyzing a single npm package with optional local versions"""
     pkg_dir = Path(out_dir) / package.replace('/', '_')
     pkg_dir.mkdir(parents=True, exist_ok=True)
 
     start_time = time.time()
     print(f"[{package_index}/{total_packages}] Analyzing {package}...")
-    analyzer = PackageAnalyzer(workers=workers, package_name=package, output_dir=pkg_dir)
+    analyzer = PackageAnalyzer(include_local=include_local, local_versions_dir=local_dir, workers=workers, package_name=package, output_dir=pkg_dir)
 
     # Capture the output of analyze_package
     output_buffer = StringIO()

@@ -8,11 +8,13 @@ from .code_analyzer import CodeAnalyzer
 from models import SourceType
 class VersionAnalyzer:
     """Handles analysis of versions from a Git repository and local versions"""
-    def __init__(self, max_processes: int = 1, package_name: str = "", output_dir: Path = Path(".")):
+    def __init__(self, max_processes: int = 1, include_local: bool = False, local_versions_dir: str = "./local_versions", package_name: str = "", output_dir: Path = Path(".")):
         self.package_name = package_name
         self.output_dir = output_dir
         self.code_analyzer = CodeAnalyzer()
         self.max_processes = max_processes
+        self.include_local = include_local
+        self.local_versions_dir = local_versions_dir
         self.entries = []
     
     def analyze_versions(self) -> None:

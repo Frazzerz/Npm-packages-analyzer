@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 class SourceType(Enum):
+    LOCAL = "local"
     TARBALL = "tarball"
 @dataclass
 class VersionEntry:
