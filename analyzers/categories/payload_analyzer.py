@@ -8,7 +8,8 @@ class PayloadAnalyzer:
     
     TIMING_DELAYS_PATTERNS: List[Pattern] = [
         # await new Promise( (resolve) => { setTimeout( resolve, 1000); } );
-        re.compile(r'await\s+new\s+Promise\s*\(\s*(\w+)\s*=>\s*\{?\s*[\s\S]*?setTimeout\w*\s*\(\s*\1[\s\S]*?\}?\s*\)', re.IGNORECASE),
+        #re.compile(r'await\s+new\s+Promise\s*\(\s*(\w+)\s*=>\s*\{?\s*[\s\S]*?setTimeout\w*\s*\(\s*\1[\s\S]*?\}?\s*\)', re.IGNORECASE),
+        re.compile(r'await\s+new\s+Promise\s*\(\s*(\w+)\s*=>\s*\{?\s*[\s\S]{0,500}?setTimeout\w*\s*\(\s*\1[\s\S]{0,100}?\}?\s*\)', re.IGNORECASE),
         # (\w+) capture the variable name (resolve)
         # \w* zero or more alphanumeric characters (or underscore)
         # [\s\S] any character (space or non-space). Used to match newlines as well
@@ -24,8 +25,15 @@ class PayloadAnalyzer:
         # Bun is a JavaScript runtime similar to Node.js, and it has a function to execute system commands
         # await Bun.$`command`
         # Not to be confused with RegExp.exec(), which is a method for searching for patterns in a string
-        # re.compile(r'(\w+)?.?exec\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)', re.IGNORECASE),
-        # re.compile(r'(\w+)?\s*Bun\.\$\s*\`[\s\S]*?\`', re.IGNORECASE),
+        re.compile(
+            r'(?:'
+            r'(?:child_process|exec|spawn|shell)\.exec\s*\(\s*\w{1,50}\s*,\s*\w{1,50}\s*\)|'  # Limit \w+
+            r'\w{0,50}\s*Bun\.\$\s*`[^`]{0,200}`'  # Limit backtick content
+            r')',
+            re.IGNORECASE
+        )
+    ]
+    '''
         re.compile(
             r'(?:'
             #r'(\w+)?.?exec\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)|'                                     # Original
@@ -35,17 +43,15 @@ class PayloadAnalyzer:
             r')',
             re.IGNORECASE
         )
-    ]
+    '''
 
     PREINSTALL_PATTERNS: List[Pattern] = [re.compile(r'"preinstall"\s*:\s*"[^"]*"\s*,?', re.IGNORECASE)]    # [^"]*  Any text between quotes
     
     def analyze(self, content: str, package_info: Dict) -> PayloadMetrics:
         payload = PayloadMetrics()
-        if not content:
-            return payload
         
         payload.timing_delays_count, payload.list_timing_delays = UtilsForAnalyzer.detect_patterns(content, self.TIMING_DELAYS_PATTERNS)
-        payload.eval_count, payload.eval_list = UtilsForAnalyzer.detect_patterns(content, self.EVAL_PATTERNS)
+        payload.eval_count, payload.list_eval = UtilsForAnalyzer.detect_patterns(content, self.EVAL_PATTERNS)
         payload.shell_commands_count, payload.list_shell_commands = UtilsForAnalyzer.detect_patterns(content, self.SHELL_COMMANDS_PATTERNS)
 
         if(package_info['file_name'] == 'package.json'):

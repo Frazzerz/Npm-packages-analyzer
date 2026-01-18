@@ -21,7 +21,7 @@ def analyze_single_package(package, out_dir, package_index, total_packages, work
         analyzer.analyze_package()
 
     TextReporter().generate_log_txt(pkg_dir, package, output_buffer)
-    #FileHandler().delete_tarballs(package)
+    FileHandler().delete_exctracted_dir(package)
 
     elapsed_time = time.time() - start_time
     print(f"[{package_index}/{total_packages}] Completed: {package} ({elapsed_time:.1f}s)")

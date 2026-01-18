@@ -5,4 +5,3 @@ class CodeType(Enum):
     CLEAR = "Clear"
     OBFUSCATED = "Obfuscated"
     MINIFIED = "Minified"
-    DEOBFUSCATED = "Deobfuscated"

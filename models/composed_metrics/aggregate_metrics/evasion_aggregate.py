@@ -1,15 +1,11 @@
-from typing import List
 from dataclasses import dataclass, field
-
+from typing import List
 @dataclass
 class EvasionVersion:
     """For a single version"""
-    code_types: List[str] = field(default_factory=list)
     obfuscation_patterns_count: int = 0
+    list_obfuscation_patterns: List[str] = field(default_factory=list)
+    len_list_obfuscation_patterns_unique: int = 0  # to be computed after aggregation
     platform_detections_count: int = 0
-
-@dataclass
-class EvasionAggregate:
-    """For aggregate versions"""
-    avg_obfuscation_patterns_count: int = 0
-    avg_platform_detections_count: int = 0
+    list_platform_detections: List[str] = field(default_factory=list)
+    len_list_platform_detections_unique: int = 0   # to be computed after aggregation

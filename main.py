@@ -32,7 +32,7 @@ def main():
         if not packages:
             raise SystemExit("Error: No package in JSON file")
 
-        print('NPM PACKAGE ANALYZER')
+        print('NORMAL WORLD NPM PACKAGE ANALYZER')
         print(f'Packages to analyze: {len(packages)}')
         print(f'Worker(s): {args.workers}')
         print(f'Output directory: {args.output}')

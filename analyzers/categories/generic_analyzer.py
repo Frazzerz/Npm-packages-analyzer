@@ -1,24 +1,38 @@
 import math
+from typing import Tuple
 from models.domains import GenericMetrics
 from utils import synchronized_print
+import jsbeautifier
+from models import CodeType
 
 class GenericAnalyzer:
     """Obtain generic metrics from files"""
 
-    def analyze(self, content: str) -> GenericMetrics:
+    def pre_analyze(self, content: str) -> Tuple[int, int, bool]:
+        """Pre-analyze to get longest line length, number of non-empty lines, and detect if minified"""
+        number_of_non_empty_lines = len([r for r in content.splitlines() if r.strip()])
+        longest_line_length = max(len(r) for r in content.splitlines()) if content.splitlines() else 0
+        minified = self._detect_minified_code(longest_line_length, number_of_non_empty_lines)
+        return longest_line_length, number_of_non_empty_lines, minified
+
+    def analyze(self, content: str, longest_line_length: int, number_of_non_empty_lines: int, minified: bool) -> GenericMetrics:
         generic = GenericMetrics()
-
-        if not content:
-            return generic
         
-        generic.size_bytes = len(content.encode("utf-8"))
-        generic.size_chars = len(content)
+        if not minified:
+            generic.code_type = CodeType.CLEAR
+            generic.longest_line_length = longest_line_length
+            generic.number_of_non_empty_lines = number_of_non_empty_lines
+        else:
+            generic.code_type = CodeType.MINIFIED
+            generic.longest_line_length = max(len(r) for r in content.splitlines()) if content.splitlines() else 0
+            generic.number_of_non_empty_lines = len([r for r in content.splitlines() if r.strip()])
+        
+        generic.number_of_characters = len(content)
         whitespace_count = sum(1 for c in content if c.isspace())
-        generic.blank_space_and_character_ratio = whitespace_count / generic.size_chars if content else 0.0
+        generic.blank_space_and_character_ratio = whitespace_count / generic.number_of_characters if generic.number_of_characters else 0.0
         generic.shannon_entropy = self._calculate_shannon_entropy(content)
-        ##no_empty_lines = len([r for r in content.splitlines() if r.strip()])
-
-        generic.longest_line_length = max(len(r) for r in content.splitlines()) if content.splitlines() else 0
+        
+        
         return generic
 
     def _calculate_shannon_entropy(self, content: str) -> float:
@@ -39,3 +53,12 @@ class GenericAnalyzer:
             entropy -= probability * math.log2(probability)
 
         return entropy
+    
+    def _detect_minified_code(self, longest_line_length: int, number_of_non_empty_lines: int) -> bool:
+        """Detect if code is minified"""
+        return longest_line_length > 500 and number_of_non_empty_lines < 5
+    
+    @staticmethod
+    def unminify_code(content: str) -> str:
+        """Attempt to unminify code"""
+        return jsbeautifier.beautify(content)

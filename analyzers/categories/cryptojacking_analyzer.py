@@ -78,11 +78,9 @@ class CryptojackingAnalyzer:
 
     def analyze(self, content: str) -> CryptoMetrics:
         crypto = CryptoMetrics()
-        if not content:
-            return crypto
 
         crypto.crypto_addresses, crypto.list_crypto_addresses = UtilsForAnalyzer.detect_patterns(content, self.CRYPTO_PATTERNS)
-        crypto.cryptocurrency_name = UtilsForAnalyzer.detect_count_patterns(content, self.CRYPTOCURRENCY_NAMES)
+        crypto.cryptocurrency_name, crypto.list_cryptocurrency_names = UtilsForAnalyzer.detect_patterns(content, self.CRYPTOCURRENCY_NAMES)
         crypto.wallet_detection, crypto.wallet_detection_list = UtilsForAnalyzer.detect_patterns(content, self.WALLET_DETECTION_PATTERNS)
         # Mechanism present in the malware considered :
         #   Intercepts all HTTP responses (fetch/XMLHttpRequest) and replaces the crypto addresses found in the content with those controlled by the attacker

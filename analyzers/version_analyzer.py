@@ -2,11 +2,10 @@ from pathlib import Path
 from typing import List
 import multiprocessing as mp
 from models.composed_metrics import FileMetrics, VersionMetrics
-from reporters import CSVReporter, TextReporter
-from utils import FileHandler, synchronized_print, Deobfuscator
-from .aggregate_metrics_by_tag import AggregateMetricsByTag
+from reporters import CSVReporter
+from utils import FileHandler, synchronized_print, FileTypeDetector
 from .code_analyzer import CodeAnalyzer
-from models import SourceType, CodeType
+from models import SourceType
 class VersionAnalyzer:
     """Handles analysis of versions from a Git repository and local versions"""
     def __init__(self, max_processes: int = 1, package_name: str = "", output_dir: Path = Path(".")):
@@ -26,40 +25,15 @@ class VersionAnalyzer:
             synchronized_print(f"  [{i+1}/{len(self.entries)}] Analyzing tag {entry.name}")
             try:
                 repo_path = entry.ref / "package"  # entry.ref is the path to the extracted local version
-                
                 # curr_metrics is the list of FileMetrics for all files in the current version
                 # current_metrics e.g. list[FileMetrics(package='example', version='1.0.0', file_path='index.js', ...), FileMetrics(...), ...]
                 curr_metrics = self._analyze_version(entry.name, repo_path, entry.source)
-                
-                # Identify obfuscated JS files and attempt deobfuscation
-                obfuscated_files = [f for f in curr_metrics if f.evasion.code_type == CodeType.OBFUSCATED and f.file_path.endswith('.js')]
-                if obfuscated_files:
-                    synchronized_print(f"    Found {len(obfuscated_files)} obfuscated js files, trying to deobfuscate it...")
-                    for f in obfuscated_files:
-                        succ = Deobfuscator.deobfuscate(
-                            path_original_file= repo_path / f.file_path,  # e.g. other_versions/extracted/package_name/version/package/index.js
-                            package_name=self.package_name,               # e.g. package_name
-                            version=entry.name,                           # e.g. version-local
-                            file_name=f.file_path                         # e.g. index.js
-                        )
-                        if not succ:
-                            synchronized_print(f"    Deobfuscation failed for file: {f.file_path} in version {entry.name}, skipping analysis of this deobfuscated file.")
-                            continue
-                        path_dir = Path('deobfuscated_files') / self.package_name / entry.name
-                        path_file = path_dir / f.file_path.replace('.js', '-deobfuscated.js')
-                        deob = self._analyze_single_file(
-                            file_path=path_file,
-                            version=entry.name,
-                            package_dir=path_dir,
-                            source=SourceType.DEOBFUSCATED
-                        )
-                        curr_metrics.append(deob)
-                
-                synchronized_print(f"    Analyzed {len(curr_metrics)} files")
-                
+                #if curr_metrics == -1:
+                #    break
+                synchronized_print(f"    {len(curr_metrics)} files present in version analyzed.")
                 # aggregate_metrics_by_tag is the aggregation of all metrics from the all files in the current version
                 # aggregate_metrics_by_tag e.g. VersionMetrics(package='example', version='1.0.0', code_types=['Clear', ...], obfuscation_patterns_count=5, ...)
-                aggregate_metrics_by_tag = AggregateMetricsByTag().aggregate_metrics_by_tag(curr_metrics, repo_path, entry.source)
+                aggregate_metrics_by_tag = self.aggregate_metrics_by_tag(curr_metrics, repo_path, entry.source)
 
                 # Incremental save detailed metrics for the current tag
                 all_metrics_csv = self.output_dir / "file_metrics.csv"
@@ -74,8 +48,11 @@ class VersionAnalyzer:
 
     def _analyze_version(self, version: str, package_dir: Path, source: SourceType) -> List[FileMetrics]:
         """Analyze all files of a specific Git version"""
-
+        #try:
         files = FileHandler().get_all_files(package_dir)
+        #except TooManyFilesError as e:
+        #    synchronized_print(f"    {e}. Skipping analysis...")
+        #    return -1
         if self.max_processes > 1:
             file_results = self._analyze_files_parallel(files, version, package_dir, source)
         else:
@@ -112,6 +89,19 @@ class VersionAnalyzer:
 
     def _analyze_single_file_wrapper(self, file_path: Path, version: str, package_dir: Path, source: SourceType) -> FileMetrics:
         """Wrapper function for parallel execution that handles exceptions"""
+        '''
+        import time
+        start = time.time()
+        try:
+            synchronized_print(f"[START] Analyzing {file_path.name}")
+            result = self._analyze_single_file(file_path, version, package_dir, source)
+            elapsed = time.time() - start
+            synchronized_print(f"[DONE] {file_path.name} in {elapsed:.2f}s")
+            return result
+        except Exception as e:
+            synchronized_print(f"[ERROR] {file_path.name}: {e}")
+            return None
+        '''
         try:
             return self._analyze_single_file(file_path, version, package_dir, source)
         except Exception as e:
@@ -130,3 +120,106 @@ class VersionAnalyzer:
             'info': source
         }
         return self.code_analyzer.analyze_file(file_path, package_info)
+    
+
+    def aggregate_metrics_by_tag(self, metrics_list: List[FileMetrics], repo_path: Path, source: SourceType) -> VersionMetrics:
+        """Aggregation of all metrics from the all files in the current version into a single VersionMetrics object"""
+
+        if not metrics_list:
+            synchronized_print("Warning: Empty metrics list provided to aggregate_metrics_by_tag")
+            return None
+        
+        version_metrics = VersionMetrics()
+        version_metrics.package = metrics_list[0].package
+        version_metrics.version = metrics_list[0].version # Ensure it's a string, not a git.refs.tag.TagReference
+
+        # Calculate total file sizes for weighted averages
+        for fm in metrics_list:
+                version_metrics.generic.total_number_of_characters += fm.generic.number_of_characters
+        
+        for fm in metrics_list:
+            version_metrics.generic.list_file_types.append(fm.generic.file_type)
+            if (FileTypeDetector.is_valid_file_for_analysis(fm.generic.file_type)):
+                version_metrics.generic.total_plain_text_files += 1
+                version_metrics.generic.total_dim_plain_text_files += fm.generic.size_bytes
+            else:
+                version_metrics.generic.total_other_files += 1
+                version_metrics.generic.total_dim_bytes_other_files += fm.generic.size_bytes
+            version_metrics.generic.code_types.append(fm.generic.code_type)
+            version_metrics.generic.total_files += 1
+            version_metrics.generic.total_dim_bytes_pkg += fm.generic.size_bytes
+            version_metrics.generic.longest_line_length = max(version_metrics.generic.longest_line_length, fm.generic.longest_line_length)
+
+            version_metrics.evasion.obfuscation_patterns_count += fm.evasion.obfuscation_patterns_count
+            version_metrics.evasion.list_obfuscation_patterns.extend(fm.evasion.list_obfuscation_patterns)
+            version_metrics.evasion.platform_detections_count += fm.evasion.platform_detections_count
+            version_metrics.evasion.list_platform_detections.extend(fm.evasion.list_platform_detections)
+            
+            version_metrics.payload.timing_delays_count += fm.payload.timing_delays_count
+            version_metrics.payload.list_timing_delays.extend(fm.payload.list_timing_delays)
+            version_metrics.payload.eval_count += fm.payload.eval_count
+            version_metrics.payload.list_eval.extend(fm.payload.list_eval)
+            version_metrics.payload.shell_commands_count += fm.payload.shell_commands_count
+            version_metrics.payload.list_shell_commands.extend(fm.payload.list_shell_commands)
+            version_metrics.payload.preinstall_scripts.extend(fm.payload.preinstall_scripts)    # only one element
+
+            version_metrics.exfiltration.scan_functions_count += fm.exfiltration.scan_functions_count
+            version_metrics.exfiltration.list_scan_functions.extend(fm.exfiltration.list_scan_functions)
+            version_metrics.exfiltration.sensitive_elements_count += fm.exfiltration.sensitive_elements_count
+            version_metrics.exfiltration.list_sensitive_elements.extend(fm.exfiltration.list_sensitive_elements)
+            version_metrics.exfiltration.data_transmission_count += fm.exfiltration.data_transmission_count
+            version_metrics.exfiltration.list_data_transmissions.extend(fm.exfiltration.list_data_transmissions)
+
+            version_metrics.crypto.crypto_addresses += fm.crypto.crypto_addresses
+            version_metrics.crypto.list_crypto_addresses.extend(fm.crypto.list_crypto_addresses)
+            version_metrics.crypto.cryptocurrency_name += fm.crypto.cryptocurrency_name
+            version_metrics.crypto.list_cryptocurrency_names.extend(fm.crypto.list_cryptocurrency_names)
+            version_metrics.crypto.wallet_detection += fm.crypto.wallet_detection
+            version_metrics.crypto.replaced_crypto_addresses += fm.crypto.replaced_crypto_addresses
+            version_metrics.crypto.hook_provider += fm.crypto.hook_provider
+            
+            # weighted averages
+            # To calculate the average blank space ratio for the version, we need to calculate the weighted average based on character size,
+            # so a larger file will have a larger weight on average
+            version_metrics.generic.weighted_avg_blank_space_and_character_ratio += fm.generic.blank_space_and_character_ratio * fm.generic.number_of_characters / version_metrics.generic.total_number_of_characters if version_metrics.generic.total_number_of_characters > 0 else 0.0
+            # To calculate the shannon entropy of the version, we need to calculate the weighted average based on character size,
+            # represent the average information content per character in the version
+            version_metrics.generic.weighted_avg_shannon_entropy += fm.generic.shannon_entropy * fm.generic.number_of_characters / version_metrics.generic.total_number_of_characters if version_metrics.generic.total_number_of_characters > 0 else 0.0
+
+        # Remove duplicates in lists (set function)
+        version_metrics.generic.list_file_types = list(set(version_metrics.generic.list_file_types))
+        version_metrics.generic.code_types = list(set(version_metrics.generic.code_types))
+        
+        version_metrics.evasion.list_obfuscation_patterns = list(set(version_metrics.evasion.list_obfuscation_patterns))
+        version_metrics.evasion.list_platform_detections = list(set(version_metrics.evasion.list_platform_detections))
+
+        version_metrics.payload.list_timing_delays = list(set(version_metrics.payload.list_timing_delays))
+        version_metrics.payload.list_eval = list(set(version_metrics.payload.list_eval))
+        version_metrics.payload.list_shell_commands = list(set(version_metrics.payload.list_shell_commands))
+
+        version_metrics.exfiltration.list_scan_functions = list(set(version_metrics.exfiltration.list_scan_functions))
+        version_metrics.exfiltration.list_sensitive_elements = list(set(version_metrics.exfiltration.list_sensitive_elements))
+        version_metrics.exfiltration.list_data_transmissions = list(set(version_metrics.exfiltration.list_data_transmissions))
+        
+        version_metrics.crypto.list_crypto_addresses = list(set(version_metrics.crypto.list_crypto_addresses))
+        version_metrics.crypto.list_cryptocurrency_names = list(set(version_metrics.crypto.list_cryptocurrency_names))
+        
+        # Compute unique lengths
+        version_metrics.generic.len_list_file_types_unique = len(version_metrics.generic.list_file_types)
+        version_metrics.generic.len_list_code_types_unique = len(version_metrics.generic.code_types)
+
+        version_metrics.evasion.len_list_obfuscation_patterns_unique = len(version_metrics.evasion.list_obfuscation_patterns)
+        version_metrics.evasion.len_list_platform_detections_unique = len(version_metrics.evasion.list_platform_detections)
+
+        version_metrics.payload.len_list_timing_delays_unique = len(version_metrics.payload.list_timing_delays)
+        version_metrics.payload.len_list_eval_unique = len(version_metrics.payload.list_eval)
+        version_metrics.payload.len_list_shell_commands_unique = len(version_metrics.payload.list_shell_commands)
+
+        version_metrics.exfiltration.len_list_scan_functions_unique = len(version_metrics.exfiltration.list_scan_functions)
+        version_metrics.exfiltration.len_list_sensitive_elements_unique = len(version_metrics.exfiltration.list_sensitive_elements)
+        version_metrics.exfiltration.len_list_data_transmissions_unique = len(version_metrics.exfiltration.list_data_transmissions)
+        
+        version_metrics.crypto.len_list_crypto_addresses_unique = len(version_metrics.crypto.list_crypto_addresses)
+        version_metrics.crypto.len_list_cryptocurrency_names_unique = len(version_metrics.crypto.list_cryptocurrency_names)
+
+        return version_metrics

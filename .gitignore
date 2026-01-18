@@ -1,9 +1,6 @@
 __pycache__/
 analysis_results/
-other_versions/
-repos/
-deobfuscated_files/
 list_pkg.json
-list_pkg1.json
 log.txt
 tarballs/
+command.txt

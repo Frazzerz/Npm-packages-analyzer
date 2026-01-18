@@ -4,7 +4,6 @@ from .aggregate_metrics.evasion_aggregate import EvasionVersion
 from .aggregate_metrics.payload_aggregate import PayloadVersion
 from .aggregate_metrics.exfiltration_aggregate import ExfiltrationVersion
 from .aggregate_metrics.crypto_aggregate import CryptoVersion
-from .aggregate_metrics.account import AccountVersion
 
 @dataclass
 class VersionMetrics:
@@ -17,4 +16,3 @@ class VersionMetrics:
     payload: PayloadVersion = field(default_factory=PayloadVersion)
     exfiltration: ExfiltrationVersion = field(default_factory=ExfiltrationVersion)
     crypto: CryptoVersion = field(default_factory=CryptoVersion)
-    account: AccountVersion = field(default_factory=AccountVersion)
