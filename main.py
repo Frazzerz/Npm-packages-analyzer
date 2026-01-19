@@ -1,9 +1,8 @@
 import argparse
 from multiprocessing import cpu_count
-import sys
 from pathlib import Path
 from datetime import datetime
-from utils import TeeOutput, FileHandler
+from utils import FileHandler, setup_logging, close_logging, synchronized_print
 from analyze_single_package import analyze_single_package
 import time
 
@@ -21,29 +20,25 @@ def main():
     if args.delete_analysis:
         FileHandler.delete_previous_analysis()
     
-    # setup log
-    original_stdout = sys.stdout
-    log_path = Path(args.log)
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    log_file = TeeOutput(log_path)
-    sys.stdout = log_file
-    print(f"=== LOG ANALYSIS STARTED {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
-
+    # Setup logging system
+    setup_logging(Path(args.log))
+    
     try:
+        synchronized_print(f"=== LOG ANALYSIS STARTED {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
+        
         packages = FileHandler.load_packages_from_json(args.json)
         if not packages:
             raise SystemExit("Error: No package in JSON file")
 
-        print('NORMAL WORLD NPM PACKAGE ANALYZER')
-        print(f'Packages to analyze: {len(packages)}')
-        print(f'Worker(s): {args.workers}')
-        print(f'Output directory: {args.output}')
-        print(f'Include local versions: {args.local}')
+        synchronized_print('NORMAL WORLD NPM PACKAGE ANALYZER')
+        synchronized_print(f'Packages to analyze: {len(packages)}')
+        synchronized_print(f'Worker(s): {args.workers}')
+        synchronized_print(f'Output directory: {args.output}')
+        synchronized_print(f'Include local versions: {args.local}')
         if args.local:
-            print(f'Local versions directory: {args.local_dir}')
-        if args.log:
-            print(f'Log: {args.log}')
-        print('=' * 50)
+            synchronized_print(f'Local versions directory: {args.local_dir}')
+        synchronized_print(f'Log: {args.log}')
+        synchronized_print('=' * 50)
 
         Path(args.output).mkdir(parents=True, exist_ok=True)
 
@@ -52,13 +47,11 @@ def main():
             analyze_single_package(pkg, args.output, i+1, len(packages), args.local, args.local_dir, args.workers)
         
         total_time = time.time() - start_time
-        print(f'=== ANALYSIS COMPLETED. Total time: {total_time:.1f}s ===')
+        synchronized_print(f'=== ANALYSIS COMPLETED. Total time: {total_time:.1f}s ===')
+        synchronized_print(f"=== LOG ANALYSIS ENDED {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
 
     finally:
-        if args.log:
-            print(f"=== LOG ANALYSIS ENDED {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
-            sys.stdout = original_stdout
-            log_file.close()
+        close_logging()
 
 if __name__ == '__main__':
     main()
