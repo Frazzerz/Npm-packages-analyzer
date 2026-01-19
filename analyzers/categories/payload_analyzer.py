@@ -51,8 +51,11 @@ class PayloadAnalyzer:
         payload = PayloadMetrics()
         
         payload.timing_delays_count, payload.list_timing_delays = UtilsForAnalyzer.detect_patterns(content, self.TIMING_DELAYS_PATTERNS)
+        payload.len_list_timing_delays_unique = len(set(payload.list_timing_delays))
         payload.eval_count, payload.list_eval = UtilsForAnalyzer.detect_patterns(content, self.EVAL_PATTERNS)
+        payload.len_list_eval_unique = len(set(payload.list_eval))
         payload.shell_commands_count, payload.list_shell_commands = UtilsForAnalyzer.detect_patterns(content, self.SHELL_COMMANDS_PATTERNS)
+        payload.len_list_shell_commands_unique = len(set(payload.list_shell_commands))
 
         if(package_info['file_name'] == 'package.json'):
             _, preinstall_scripts = UtilsForAnalyzer.detect_patterns(content, self.PREINSTALL_PATTERNS)

@@ -4,7 +4,7 @@ from utils import UtilsForAnalyzer
 from models.domains import ExfiltrationMetrics
 from utils import synchronized_print
 
-class DataExfiltrationAnalyzer:
+class ExfiltrationAnalyzer:
     """Analyze data exfiltration & command and control techniques"""
     
     SCAN_FUNCTIONS_PATTERNS: List[Pattern] = [
@@ -63,6 +63,9 @@ class DataExfiltrationAnalyzer:
         exfiltration = ExfiltrationMetrics()
 
         exfiltration.scan_functions_count,  exfiltration.list_scan_functions = UtilsForAnalyzer.detect_patterns(content, self.SCAN_FUNCTIONS_PATTERNS)
+        exfiltration.len_list_scan_functions_unique = len(set(exfiltration.list_scan_functions))
         exfiltration.sensitive_elements_count, exfiltration.list_sensitive_elements = UtilsForAnalyzer.detect_patterns(content, self.SCANNED_ELEMENTS_PATTERNS)
+        exfiltration.len_list_sensitive_elements_unique = len(set(exfiltration.list_sensitive_elements))
         exfiltration.data_transmission_count, exfiltration.list_data_transmissions = UtilsForAnalyzer.detect_patterns(content, self.DATA_TRANSMISSION_PATTERNS)
+        exfiltration.len_list_data_transmissions_unique = len(set(exfiltration.list_data_transmissions))
         return exfiltration

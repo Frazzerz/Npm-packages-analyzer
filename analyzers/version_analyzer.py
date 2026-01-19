@@ -3,9 +3,9 @@ from typing import List
 import multiprocessing as mp
 from models.composed_metrics import FileMetrics, VersionMetrics
 from reporters import CSVReporter
-from utils import FileHandler, synchronized_print, FileTypeDetector
+from utils import FileHandler, synchronized_print, FileTypeDetector, OutputTarget
 from .code_analyzer import CodeAnalyzer
-from models import SourceType
+from models import SourceType, VersionEntry
 class VersionAnalyzer:
     """Handles analysis of versions from a Git repository and local versions"""
     def __init__(self, max_processes: int = 1, include_local: bool = False, local_versions_dir: str = "./local_versions", package_name: str = "", output_dir: Path = Path(".")):
@@ -15,7 +15,22 @@ class VersionAnalyzer:
         self.max_processes = max_processes
         self.include_local = include_local
         self.local_versions_dir = local_versions_dir
-        self.entries = []
+        self.entries: List[VersionEntry] = []
+
+    def _find_package_root(self, extract_path: Path) -> Path:
+        """Find the actual package root directory inside the extracted tarball"""
+        # "package" folder is the standard root for npm packages
+        package_dir = extract_path / "package"
+        if package_dir.exists() and package_dir.is_dir() and (package_dir / "package.json").exists():
+            return package_dir
+        
+        # If not found, look for the first subdirectory that contains package.json
+        for item in extract_path.iterdir():
+            if item.is_dir() and (item / "package.json").exists():
+                synchronized_print(f"    Found package root: {item.name}", target=OutputTarget.TERMINAL_ONLY) #FILE_ONLY
+                return item
+         
+        raise FileNotFoundError(f"Could not find package.json in {extract_path} or any of its subdirectories")
     
     def analyze_versions(self) -> None:
         """Analyze all versions"""
@@ -25,8 +40,9 @@ class VersionAnalyzer:
 
         for i, entry in enumerate(self.entries):
             synchronized_print(f"  [{i+1}/{len(self.entries)}] Analyzing tag {entry.name}")
-            try:
-                repo_path = entry.ref / "package"  # entry.ref is the path to the extracted local version
+            try: 
+                repo_path = self._find_package_root(entry.ref)      # entry.ref is the path to the extracted local version
+
                 # curr_metrics is the list of FileMetrics for all files in the current version
                 # current_metrics e.g. list[FileMetrics(package='example', version='1.0.0', file_path='index.js', ...), FileMetrics(...), ...]
                 curr_metrics = self._analyze_version(entry.name, repo_path, entry.source)
@@ -42,10 +58,12 @@ class VersionAnalyzer:
                 aggregate_metrics_csv = self.output_dir / "aggregate_metrics_by_single_version.csv"
                 CSVReporter.save_csv(all_metrics_csv, curr_metrics)
                 CSVReporter.save_csv(aggregate_metrics_csv, aggregate_metrics_by_tag)
-
+            except FileNotFoundError as e:
+                synchronized_print(f"Skipping tag {entry.name}: {e}")
+                return
             except Exception as e:
                 synchronized_print(f"Error analyzing tag {entry.name}: {e}")
-
+                return
         return
 
     def _analyze_version(self, version: str, package_dir: Path, source: SourceType) -> List[FileMetrics]:
@@ -128,29 +146,39 @@ class VersionAnalyzer:
         """Aggregation of all metrics from the all files in the current version into a single VersionMetrics object"""
 
         if not metrics_list:
-            synchronized_print("Warning: Empty metrics list provided to aggregate_metrics_by_tag")
+            synchronized_print("Warning: blank metrics list provided to aggregate_metrics_by_tag")
             return None
         
         version_metrics = VersionMetrics()
         version_metrics.package = metrics_list[0].package
         version_metrics.version = metrics_list[0].version # Ensure it's a string, not a git.refs.tag.TagReference
 
-        # Calculate total file sizes for weighted averages
+        # Calculate total_number_of_characters and total_number_of_characters_no_comments first for weighted averages
         for fm in metrics_list:
                 version_metrics.generic.total_number_of_characters += fm.generic.number_of_characters
+                version_metrics.generic.total_number_of_characters_no_comments += fm.generic.number_of_characters_no_comments
         
         for fm in metrics_list:
+            version_metrics.generic.total_files += 1
             version_metrics.generic.list_file_types.append(fm.generic.file_type)
+            version_metrics.generic.total_dim_bytes_pkg += fm.generic.size_bytes
             if (FileTypeDetector.is_valid_file_for_analysis(fm.generic.file_type)):
                 version_metrics.generic.total_plain_text_files += 1
                 version_metrics.generic.total_dim_plain_text_files += fm.generic.size_bytes
             else:
                 version_metrics.generic.total_other_files += 1
                 version_metrics.generic.total_dim_bytes_other_files += fm.generic.size_bytes
+
+            version_metrics.generic.total_number_of_non_blank_lines += fm.generic.total_number_of_non_blank_lines
+            version_metrics.generic.total_number_of_comments += fm.generic.number_of_comments
+            version_metrics.generic.total_number_of_non_blank_lines_no_comments += fm.generic.number_of_non_blank_lines_no_comments
+            if fm.file_path != "README.md":
+                version_metrics.generic.longest_line_length_no_comments = max(version_metrics.generic.longest_line_length_no_comments, fm.generic.longest_line_length_no_comments)
             version_metrics.generic.code_types.append(fm.generic.code_type)
-            version_metrics.generic.total_files += 1
-            version_metrics.generic.total_dim_bytes_pkg += fm.generic.size_bytes
-            version_metrics.generic.longest_line_length = max(version_metrics.generic.longest_line_length, fm.generic.longest_line_length)
+            version_metrics.generic.total_number_of_printable_characters += fm.generic.number_of_printable_characters
+            version_metrics.generic.total_number_of_printable_characters_no_comments += fm.generic.number_of_printable_characters_no_comments
+            version_metrics.generic.total_number_of_whitespace_characters += fm.generic.number_of_whitespace_characters
+            version_metrics.generic.total_number_of_whitespace_characters_no_comments += fm.generic.number_of_whitespace_characters_no_comments
 
             version_metrics.evasion.obfuscation_patterns_count += fm.evasion.obfuscation_patterns_count
             version_metrics.evasion.list_obfuscation_patterns.extend(fm.evasion.list_obfuscation_patterns)
@@ -181,13 +209,15 @@ class VersionAnalyzer:
             version_metrics.crypto.hook_provider += fm.crypto.hook_provider
             
             # weighted averages
-            # To calculate the average blank space ratio for the version, we need to calculate the weighted average based on character size,
-            # so a larger file will have a larger weight on average
-            version_metrics.generic.weighted_avg_blank_space_and_character_ratio += fm.generic.blank_space_and_character_ratio * fm.generic.number_of_characters / version_metrics.generic.total_number_of_characters if version_metrics.generic.total_number_of_characters > 0 else 0.0
             # To calculate the shannon entropy of the version, we need to calculate the weighted average based on character size,
             # represent the average information content per character in the version
-            version_metrics.generic.weighted_avg_shannon_entropy += fm.generic.shannon_entropy * fm.generic.number_of_characters / version_metrics.generic.total_number_of_characters if version_metrics.generic.total_number_of_characters > 0 else 0.0
-
+            version_metrics.generic.weighted_avg_shannon_entropy_original += fm.generic.shannon_entropy_original * fm.generic.number_of_characters / version_metrics.generic.total_number_of_characters if version_metrics.generic.total_number_of_characters > 0 else 0.0
+            version_metrics.generic.weighted_avg_shannon_entropy_no_comments += fm.generic.shannon_entropy_no_comments * fm.generic.number_of_characters_no_comments / version_metrics.generic.total_number_of_characters_no_comments if version_metrics.generic.total_number_of_characters_no_comments > 0 else 0.0
+            # To calculate the average blank space ratio for the version, we need to calculate the weighted average based on character size,
+            # so a larger file will have a larger weight on average
+            version_metrics.generic.weighted_avg_blank_space_and_character_ratio_original += fm.generic.blank_space_and_character_ratio_original * fm.generic.number_of_characters / version_metrics.generic.total_number_of_characters if version_metrics.generic.total_number_of_characters > 0 else 0.0
+            version_metrics.generic.weighted_avg_blank_space_and_character_ratio_no_comments += fm.generic.blank_space_and_character_ratio_no_comments * fm.generic.number_of_characters_no_comments / version_metrics.generic.total_number_of_characters_no_comments if version_metrics.generic.total_number_of_characters_no_comments > 0 else 0.0
+            
         # Remove duplicates in lists (set function)
         version_metrics.generic.list_file_types = list(set(version_metrics.generic.list_file_types))
         version_metrics.generic.code_types = list(set(version_metrics.generic.code_types))
@@ -223,5 +253,9 @@ class VersionAnalyzer:
         
         version_metrics.crypto.len_list_crypto_addresses_unique = len(version_metrics.crypto.list_crypto_addresses)
         version_metrics.crypto.len_list_cryptocurrency_names_unique = len(version_metrics.crypto.list_cryptocurrency_names)
+
+        # Deltas
+        version_metrics.generic.entropy_delta = version_metrics.generic.weighted_avg_shannon_entropy_original - version_metrics.generic.weighted_avg_shannon_entropy_no_comments
+        version_metrics.generic.blank_space_ratio_delta = version_metrics.generic.weighted_avg_blank_space_and_character_ratio_original - version_metrics.generic.weighted_avg_blank_space_and_character_ratio_no_comments
 
         return version_metrics

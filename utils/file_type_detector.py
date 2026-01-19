@@ -55,3 +55,8 @@ class FileTypeDetector:
     def is_valid_file_for_analysis(cls, file_type: str) -> bool:
         """Check if the detected file type should be treated as text"""
         return file_type.lower() in cls.VALID_TYPES
+    
+    @classmethod
+    def is_js_like_file(cls, file_type: str) -> bool:
+        """Check if the file type is JavaScript or similar (for comment removal)"""
+        return file_type.lower() in {'javascript', 'typescript', 'jsx', 'tsx'}

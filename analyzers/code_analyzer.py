@@ -1,9 +1,8 @@
 from pathlib import Path
 from typing import Dict
-from .categories import EvasionAnalyzer, PayloadAnalyzer, DataExfiltrationAnalyzer, CryptojackingAnalyzer, GenericAnalyzer
+from .categories import EvasionAnalyzer, PayloadAnalyzer, ExfiltrationAnalyzer, CryptojackingAnalyzer, GenericAnalyzer
 from models.composed_metrics import FileMetrics
-from utils import FileHandler, synchronized_print, FileTypeDetector, OutputTarget
-from models import CodeType
+from utils import FileHandler, synchronized_print, FileTypeDetector, UtilsForAnalyzer
 class CodeAnalyzer:
     """Coordinates analysis across all categories"""
     
@@ -11,7 +10,7 @@ class CodeAnalyzer:
         self.generic_analyzer = GenericAnalyzer()
         self.evasion_analyzer = EvasionAnalyzer()
         self.payload_analyzer = PayloadAnalyzer()
-        self.data_exfiltration_analyzer = DataExfiltrationAnalyzer()
+        self.exfiltration_analyzer = ExfiltrationAnalyzer()
         self.cryptojacking_analyzer = CryptojackingAnalyzer()
 
     def analyze_file(self, file_path: Path, package_info: Dict) -> FileMetrics:
@@ -23,21 +22,33 @@ class CodeAnalyzer:
         )
         file_type = FileTypeDetector.detect_file_type(file_path)
         size_bytes = file_path.stat().st_size
+        # Initialize counts
+        number_of_characters = 0
+        total_number_of_non_blank_lines = 0
+        number_of_comments = 0
+        shannon_entropy_original = 0.0
+        number_of_whitespace_characters = 0
+        number_of_printable_characters = 0
+        blank_space_and_character_ratio_original = 0.0
+        
         if FileTypeDetector.is_valid_file_for_analysis(file_type):
             content = FileHandler().read_file(file_path)
             if not content:
-                synchronized_print(f"   Empty content: {file_path.name}", target=OutputTarget.FILE_ONLY)
+                synchronized_print(f"   Empty content: {file_path.name}")
             else:
-                longest_line_length, number_of_non_empty_lines, minified = self.generic_analyzer.pre_analyze(content)
+                minified = self.generic_analyzer.pre_analyze(content)
                 if minified:
-                    content = self.generic_analyzer.unminify_code(content)                
-                metrics.generic = self.generic_analyzer.analyze(content, longest_line_length, number_of_non_empty_lines, minified)
+                    content = self.generic_analyzer.unminify_code(content)
+                if FileTypeDetector.is_js_like_file(file_type):
+                    number_of_characters, total_number_of_non_blank_lines, shannon_entropy_original, blank_space_and_character_ratio_original, number_of_whitespace_characters, number_of_printable_characters = self.generic_analyzer.pre_analyze_js(content)
+                    content, number_of_comments = UtilsForAnalyzer.remove_comments(content, file_path.name)
+                metrics.generic = self.generic_analyzer.analyze(content, number_of_characters, total_number_of_non_blank_lines, number_of_comments, shannon_entropy_original, blank_space_and_character_ratio_original, number_of_whitespace_characters, number_of_printable_characters, minified)
                 metrics.evasion = self.evasion_analyzer.analyze(content, metrics.generic)
                 metrics.payload = self.payload_analyzer.analyze(content, package_info)
-                metrics.exfiltration = self.data_exfiltration_analyzer.analyze(content)
+                metrics.exfiltration = self.exfiltration_analyzer.analyze(content)
                 metrics.crypto = self.cryptojacking_analyzer.analyze(content)
         else:
-            synchronized_print(f"   Skipping non-valid file for analysis: {file_path.name} (detected type: {file_type})", target=OutputTarget.FILE_ONLY)
+            synchronized_print(f"   Skipping non-valid file for analysis: {file_path.name} (detected type: {file_type})")
         metrics.generic.file_type = file_type
         metrics.generic.size_bytes = size_bytes
         return metrics
