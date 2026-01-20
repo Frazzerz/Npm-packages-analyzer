@@ -30,9 +30,9 @@ class GenericVersion:
     # Deltas is difference between original and no comments, calculate later
     weighted_avg_shannon_entropy_original: float = 0.0
     weighted_avg_shannon_entropy_no_comments: float = 0.0
-    weighted_avg_shannon_entropy_no_comments_with_unminified: float = 0.0   ####
+    weighted_avg_shannon_entropy_no_comments_with_unminified: float = 0.0
     weighted_avg_shannon_entropy_no_comments_only_minified: float = 0.0
-    weighted_avg_shannon_entropy_no_comments_only_unminified: float = 0.0   ####
+    weighted_avg_shannon_entropy_no_comments_only_unminified: float = 0.0
     weighted_avg_shannon_entropy_no_comments_no_minified: float = 0.0
 
     total_number_of_printable_characters: int = 0               # All printable characters including comments
@@ -47,7 +47,7 @@ class GenericVersion:
     
     weighted_avg_blank_space_and_character_ratio_original: float = 0.0
     weighted_avg_blank_space_and_character_ratio_no_comments: float = 0.0
-    weighted_avg_blank_space_and_character_ratio_no_comments_with_unminified: float = 0.0   ###
+    weighted_avg_blank_space_and_character_ratio_no_comments_with_unminified: float = 0.0
     weighted_avg_blank_space_and_character_ratio_no_comments_only_minified: float = 0.0
-    weighted_avg_blank_space_and_character_ratio_no_comments_only_unminified: float = 0.0   ###
+    weighted_avg_blank_space_and_character_ratio_no_comments_only_unminified: float = 0.0
     weighted_avg_blank_space_and_character_ratio_no_comments_no_minified: float = 0.0

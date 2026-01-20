@@ -1,8 +1,7 @@
 import re
 from typing import List, Pattern
 from utils import UtilsForAnalyzer
-from models.domains import EvasionMetrics, GenericMetrics
-from models import CodeType
+from models.domains import EvasionMetrics
 from utils import synchronized_print
 class EvasionAnalyzer:
     """Analyze evasion techniques"""
@@ -47,16 +46,14 @@ class EvasionAnalyzer:
         ),
     '''
 
-    def analyze(self, content: str, generic_metrics: GenericMetrics) -> EvasionMetrics:
+    def analyze(self, content: str, longest_line_length: int) -> EvasionMetrics:
         evasion = EvasionMetrics()
 
         evasion.obfuscation_patterns_count, evasion.list_obfuscation_patterns = UtilsForAnalyzer.detect_patterns(content, self.OBFUSCATION_PATTERNS)
         evasion.len_list_obfuscation_patterns_unique = len(set(evasion.list_obfuscation_patterns))
         evasion.platform_detections_count, evasion.list_platform_detections = UtilsForAnalyzer.detect_patterns(content, self.PLATFORM_PATTERNS)
         evasion.len_list_platform_detections_unique = len(set(evasion.list_platform_detections))
-        
-        if self._detect_obfuscated_code(evasion.obfuscation_patterns_count, generic_metrics.longest_line_length_no_comments):
-            generic_metrics.code_type = CodeType.OBFUSCATED
+        evasion.possible_obfuscated = self._detect_obfuscated_code(evasion.obfuscation_patterns_count, longest_line_length)
         
         return evasion
     

@@ -29,6 +29,10 @@ class PackageAnalyzer:
         if self.include_local:
             localversionanalyzer = LocalVersionAnalyzer(local_versions_dir=self.local_versions_dir, pkg_name=self.pkg_name)
             localversionanalyzer.setup_local_versions()
-            entries = localversionanalyzer.unite_versions(entries)
-        self.version_analyzer.entries = entries
+            entries = localversionanalyzer.unite_versions(entries)  #([])
+        try:
+            self.version_analyzer.entries = self.npm_client.order_versions(entries)
+        except Exception as e:
+            synchronized_print(f"Error ordering versions for {self.pkg_name}: {e}")
+            return
         self.version_analyzer.analyze_versions()

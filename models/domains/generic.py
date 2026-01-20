@@ -16,11 +16,10 @@ class GenericMetrics:
     longest_line_length_no_comments: int = 0
     code_type: CodeType = CodeType.NONE
     
-    # Deltas is difference between original and no comments
-    number_of_characters_no_comments_unminified: int = 0      ####
+    number_of_characters_no_comments_unminified: int = 0
     shannon_entropy_original: float = 0.0
     shannon_entropy_no_comments: float = 0.0
-    shannon_entropy_no_comments_unminified: float = 0.0       ####
+    shannon_entropy_no_comments_unminified: float = 0.0
 
     number_of_printable_characters: int = 0                     # All printable characters including comments
     number_of_printable_characters_no_comments: int = 0         # All printable characters excluding comments
@@ -30,4 +29,4 @@ class GenericMetrics:
     number_of_whitespace_characters_no_comments_minified: int = 0
     blank_space_and_character_ratio_original: float = 0.0
     blank_space_and_character_ratio_no_comments: float = 0.0
-    blank_space_and_character_ratio_no_comments_unminified: float = 0.0   ####
+    blank_space_and_character_ratio_no_comments_unminified: float = 0.0

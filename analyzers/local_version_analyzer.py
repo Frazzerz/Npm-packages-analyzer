@@ -31,13 +31,12 @@ class LocalVersionAnalyzer:
                     local_version,
                     self.local_extract_dir
                 )
-                version_with_suffix = f"{local_version['version']}-local"
+                version_with_suffix = f"{local_version['version']}"
                 # test
                 #version_with_suffix = f"{local_version['version']}+local"
                 #version_with_suffix = f"v{local_version['version']}-local"
-                #version_with_suffix = f"posthog-node@{local_version['version']}-local"
                 self._local_versions[version_with_suffix] = extracted_path
-                synchronized_print(f"Added local version {version_with_suffix}")
+                #synchronized_print(f"Added local version {version_with_suffix}")
             except Exception as e:
                 synchronized_print(f"Error extracting {local_version['filename']}: {e}")
 
@@ -142,7 +141,7 @@ class LocalVersionAnalyzer:
         return -1 if v1 < v2 else (1 if v1 > v2 else 0)
 
     def unite_versions(self, entries: List[VersionEntry]) -> List[VersionEntry]:
-        """Combines Git and local versions into a single sorted list of VersionEntry"""
+        """Combines tarball and local versions into a single sorted list of VersionEntry"""
         if self._local_versions:
             for l_name, l_path in self._local_versions.items():
                 inserted = False
@@ -159,6 +158,7 @@ class LocalVersionAnalyzer:
 
         return entries
         # I can't use packaging.version here because some versions have a suffix that makes them invalid e.g. 2.1.0-candidate
+        # For this reason, I skip the pkg that contains unparseable versions
         #return sorted(entries, key=lambda e: Version(str(e.name)))
         #return sorted(entries, key=lambda e: str(e.name)) # Sort by name as string
     

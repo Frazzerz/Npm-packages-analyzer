@@ -45,7 +45,7 @@ class CodeAnalyzer:
         
         # Analyze all categories
         metrics.generic = self.generic_analyzer.analyze(processed_content, *pre_metrics)
-        metrics.evasion = self.evasion_analyzer.analyze(processed_content, metrics.generic)
+        metrics.evasion = self.evasion_analyzer.analyze(processed_content, metrics.generic.longest_line_length_no_comments)
         metrics.payload = self.payload_analyzer.analyze(processed_content, package_info)
         metrics.exfiltration = self.exfiltration_analyzer.analyze(processed_content)
         metrics.crypto = self.cryptojacking_analyzer.analyze(processed_content)
