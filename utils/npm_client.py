@@ -83,7 +83,7 @@ class NPMClient:
                 with open(tarball_path, 'wb') as f:
                     f.write(response.content)
                 
-                synchronized_print(f"Downloaded tarball for {self.pkg_name} version {version}")
+                #synchronized_print(f"Downloaded tarball for {self.pkg_name} version {version}")
 
             except Exception as e:
                 synchronized_print(f"Error downloading tarball for {self.pkg_name} version {version}: {e}")
