@@ -45,9 +45,10 @@ class LocalVersionAnalyzer:
         if not self.local_versions_dir.exists():
             return []
         
-        package_short = self.pkg_name.split('/')[-1].lower()
+        target_clean = re.sub(r'[@/_.-]', '', self.pkg_name.lower())
+        target_short = self.pkg_name.split('/')[-1].lower().replace('_', '').replace('-', '')
         local_versions = []
-        
+
         for filename in os.listdir(self.local_versions_dir):
             if not filename.endswith('.tgz'):
                 continue
@@ -57,7 +58,9 @@ class LocalVersionAnalyzer:
             
             if parsed:
                 file_package, file_version = parsed
-                if file_package.lower() == package_short:
+                file_pkg_clean = re.sub(r'[@/_.-]', '', file_package.lower())
+                
+                if file_pkg_clean == target_clean or file_pkg_clean == target_short:
                     full_path = self.local_versions_dir / filename
                     local_versions.append({
                         'version': file_version,
@@ -67,31 +70,22 @@ class LocalVersionAnalyzer:
                     })
         
         return local_versions
-    
+
     def _parse_local_filename(self, filename: str) -> Optional[tuple]:
-        """Parses the filename to extract package and version"""
-        cleaned = filename.lstrip('@')
+        """Extracts name and version by searching for the last number block"""
+        name = filename.replace('.tgz', '')
         
-        # Try format @package@version
-        if '@' in cleaned:
-            parts = cleaned.rsplit('@', 1)
-            if len(parts) == 2:
-                package, version = parts
-                if self._is_valid_version(version):
-                    return (package, version)
+        match = re.search(r'-(?P<ver>\d+\.\d+\.\d+.*)$', name)        
+        if match:
+            version = match.group('ver')
+            package = name[:match.start()]
+            return package, version
         
-        # Try format package-version
-        version_pattern = r'(\d+\.\d+\.\d+(?:[-._]?[a-zA-Z0-9]+)*)' # at least 3 numbers separated by periods and optionally allows suffixes like -alpha
-        matches = list(re.finditer(version_pattern, filename))
-        
-        if matches:
-            last_match = matches[-1]
-            version = last_match.group(1)
-            repo_end_idx = last_match.start()
-            package = filename[:repo_end_idx].rstrip('-')
-            if package and self._is_valid_version(version):
-                return (package, version)
-        
+        if '@' in name:
+            parts = name.rsplit('@', 1)
+            if len(parts) == 2 and self._is_valid_version(parts[1]):
+                return parts[0], parts[1]
+                
         return None
     
     def _is_valid_version(self, version_str: str) -> bool:
@@ -157,6 +151,7 @@ class LocalVersionAnalyzer:
                     entries.append(VersionEntry(name=l_name, source=SourceType.LOCAL, ref=l_path))
 
         return entries
+        # OLD 
         # I can't use packaging.version here because some versions have a suffix that makes them invalid e.g. 2.1.0-candidate
         # For this reason, I skip the pkg that contains unparseable versions
         #return sorted(entries, key=lambda e: Version(str(e.name)))
