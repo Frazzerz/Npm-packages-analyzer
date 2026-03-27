@@ -17,14 +17,19 @@ class CryptojackingAnalyzer:
         ##'solana': re.compile(r'((?<!\w)[4-9A-HJ-NP-Za-km-z][1-9A-HJ-NP-Za-km-z]{32,44})'),
         ##'solana2': re.compile(r'((?<!\w)[3][1-9A-HJ-NP-Za-km-z]{35,44})')
         ##'solana3': re.compile(r'((?<!\w)[1][1-9A-HJ-NP-Za-km-z]{35,44})')
+        #re.compile(
+        #    r'(?<![\w\-/_])(?:'
+        #    r'0x[a-fA-F0-9]{40}|'                               # Ethereum
+        #    r'1[a-km-zA-HJ-NP-Z1-9]{25,34}|'                    # Bitcoin Legacy
+        #    r'3[a-km-zA-HJ-NP-Z1-9]{25,34}|'                    # Bitcoin Segwit P2SH
+        #    r'bc1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{11,71}|'    # Bitcoin Segwit Bech32
+        #    r'bitcoincash:[qp][a-zA-Z0-9]{41}'                  # Bitcoin Cash
+        #    r')(?![\w\-/_])'
+        #),
         re.compile(
-            r'(?<![\w\-/_])(?:'
-            r'0x[a-fA-F0-9]{40}|'                               # Ethereum
-            r'1[a-km-zA-HJ-NP-Z1-9]{25,34}|'                    # Bitcoin Legacy
-            r'3[a-km-zA-HJ-NP-Z1-9]{25,34}|'                    # Bitcoin Segwit P2SH
-            r'c1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{11,71}|'     # Bitcoin Segwit Bech32
-            r'bitcoincash:[qp][a-zA-Z0-9]{41}'                  # Bitcoin Cash
-            r')(?![\w\-/_])'
+            r'(?<![\w\-/_])'       # Assicura che non ci sia testo prima (es. un'URL o altro ID)
+            r'0x[a-fA-F0-9]{40}'   # Prefisso 0x + 40 caratteri hex
+            r'(?![\w\-/_])'        # Assicura che l'indirizzo finisca lì (es. non fa parte di una stringa più lunga)
         ),
         # \b \b word boundaries, find exact word
         # (?<![\w\-/_]) ensures the preceding character is not a word character and not - or / or _
