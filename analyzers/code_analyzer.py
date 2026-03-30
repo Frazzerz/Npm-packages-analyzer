@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Dict, Tuple
-from .categories import EvasionAnalyzer, PayloadAnalyzer, ExfiltrationAnalyzer, CryptojackingAnalyzer, GenericAnalyzer
+from typing import Dict#, Tuple
+from .categories import EvasionAnalyzer, CryptojackingAnalyzer, GenericAnalyzer #PayloadAnalyzer, ExfiltrationAnalyzer,
 from models.composed_metrics import FileMetrics
-from utils import FileHandler, synchronized_print, FileTypeDetector, UtilsForAnalyzer
+from utils import FileHandler, FileTypeDetector, UtilsForAnalyzer #synchronized_print,
 
 class CodeAnalyzer:
     """Coordinates analysis across all categories"""
@@ -10,8 +10,8 @@ class CodeAnalyzer:
     def __init__(self):
         self.generic_analyzer = GenericAnalyzer()
         self.evasion_analyzer = EvasionAnalyzer()
-        self.payload_analyzer = PayloadAnalyzer()
-        self.exfiltration_analyzer = ExfiltrationAnalyzer()
+        #self.payload_analyzer = PayloadAnalyzer()
+        #self.exfiltration_analyzer = ExfiltrationAnalyzer()
         self.cryptojacking_analyzer = CryptojackingAnalyzer()
 
     def analyze_file(self, file_path: Path, package_info: Dict) -> FileMetrics:
@@ -37,32 +37,34 @@ class CodeAnalyzer:
             #ynchronized_print(f"   Empty content: {file_path.name}")
             metrics.generic.file_type = file_type
             metrics.generic.size_bytes = size_bytes
-            metrics.generic.is_plain_text_file = True # empty file is still plain text, nothing change, i don't count as other file types
+            metrics.generic.is_plain_text_file = False
             return metrics
         
         # Pre-process content
-        processed_content, pre_metrics = self._preprocess_content(content, file_path, file_type)
-        
+        #processed_content, pre_metrics = self._preprocess_content(content, file_path, file_type)
+        processed_content = self._preprocess_content(content, file_path, file_type)
+
         # Analyze all categories
-        metrics.generic = self.generic_analyzer.analyze(processed_content, *pre_metrics)
+        metrics.generic = self.generic_analyzer.analyze(processed_content)#, *pre_metrics)
         metrics.evasion = self.evasion_analyzer.analyze(processed_content, metrics.generic.longest_line_length_no_comments)
-        metrics.payload = self.payload_analyzer.analyze(processed_content, package_info)
-        metrics.exfiltration = self.exfiltration_analyzer.analyze(processed_content)
+        #metrics.payload = self.payload_analyzer.analyze(processed_content, package_info)
+        #metrics.exfiltration = self.exfiltration_analyzer.analyze(processed_content)
         metrics.crypto = self.cryptojacking_analyzer.analyze(processed_content)
         
         metrics.generic.file_type = file_type
         metrics.generic.size_bytes = size_bytes
         return metrics
     
-    def _preprocess_content(self, content: str, file_path: Path, file_type: str) -> Tuple[str, Tuple]:
+    def _preprocess_content(self, content: str, file_path: Path, file_type: str) -> str: #Tuple[str, Tuple]:
         """Preprocess content: extract metrics and remove comments"""
         # Get pre-metrics for JS-like files
         if FileTypeDetector.is_js_like_file(file_type):
-            pre_metrics = self.generic_analyzer.pre_analyze_js(content)
+            #pre_metrics = self.generic_analyzer.pre_analyze_js(content)
             content, num_comments = UtilsForAnalyzer.remove_comments(content, file_path.name)
 
-            num_chars, num_lines, entropy, ws_ratio, num_ws, num_printable = pre_metrics
-            return content, (
+            #num_chars, num_lines, entropy, ws_ratio, num_ws, num_printable = pre_metrics
+            return content 
+            """, (
                 num_chars,
                 num_lines,
                 num_comments,
@@ -70,7 +72,7 @@ class CodeAnalyzer:
                 ws_ratio,
                 num_ws,
                 num_printable,
-            )
+            )"""
         
         # For non-JS files, i don't remove comments, i analyze this later
-        return content, (0, 0, 0, 0.0, 0, 0, 0)
+        return content #, (0, 0, 0, 0.0, 0, 0, 0)

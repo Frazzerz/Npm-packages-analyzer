@@ -1,7 +1,8 @@
 __pycache__/
 analysis_results/
-list_pkg.json
 log.txt
 tarballs/
 command.txt
 local_versions/
+datasets_csv_raw/
+datasets_csv_gt0/

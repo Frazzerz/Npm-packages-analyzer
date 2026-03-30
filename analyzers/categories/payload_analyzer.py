@@ -3,8 +3,11 @@ from typing import Dict, List, Pattern
 from utils import UtilsForAnalyzer
 from utils import synchronized_print
 from models.domains import PayloadMetrics
+
+#TEST
+
 class PayloadAnalyzer:
-    """Analyze payload delivery and execution techniques"""
+    #Analyze payload delivery and execution techniques
     
     TIMING_DELAYS_PATTERNS: List[Pattern] = [
         # await new Promise( (resolve) => { setTimeout( resolve, 1000); } );

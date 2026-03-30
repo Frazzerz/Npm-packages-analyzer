@@ -1,26 +1,31 @@
-import math
-from typing import Tuple
+#import math
+#from typing import Tuple
 from models.domains import GenericMetrics
-from models import CodeType
-import jsbeautifier
+#from models import CodeType
+#import jsbeautifier
 
 class GenericAnalyzer:
     """Obtain generic metrics from files"""
-
+    """
     def pre_analyze_js(self, content: str) -> Tuple[int, int, float, float, int, int]:
-        """Pre-analyze JavaScript code to get basic metrics before comment removal"""
+        #Pre-analyze JavaScript code to get basic metrics before comment removal
         num_chars = len(content)
         num_lines = self._count_non_blank_lines(content)
         entropy = self._calculate_shannon_entropy(content)
         ws_ratio, num_ws, num_printable = self._compute_whitespace_ratio(content)
         return num_chars, num_lines, entropy, ws_ratio, num_ws, num_printable
-
-    def analyze(self, content: str, num_chars: int, num_lines: int, 
+    """
+    def analyze(self, content) -> GenericMetrics:
+        """
+        : str, num_chars: int, num_lines: int, 
                 num_comments: int, entropy_orig: float, ws_ratio_orig: float,
                 num_ws: int, num_printable: int) -> GenericMetrics:
-        """Analyze content and return generic metrics"""
+        """
+        #Analyze content and return generic metrics
         metrics = GenericMetrics()
         
+        #TEST
+        """
         # Basic character and line counts
         metrics.number_of_characters = num_chars if num_chars > 0 else len(content)
         metrics.number_of_characters_no_comments = len(content)
@@ -57,9 +62,9 @@ class GenericAnalyzer:
             metrics.number_of_whitespace_characters_no_comments = ws_count
             metrics.number_of_printable_characters = p_count
             metrics.number_of_printable_characters_no_comments = p_count
-        
+        """
         metrics.longest_line_length_no_comments = max((len(line) for line in content.splitlines()), default=0)
-        
+        """
         # Detect if code is minified
         is_minified = self._detect_minified_code(
             metrics.longest_line_length_no_comments,
@@ -83,21 +88,20 @@ class GenericAnalyzer:
                 ws_ratio_unmin, num_ws_unmin, _ = self._compute_whitespace_ratio(unminified_content)
                 metrics.blank_space_and_character_ratio_no_comments_unminified = ws_ratio_unmin
                 metrics.number_of_whitespace_characters_no_comments_minified = num_ws_unmin
-
+        """
         metrics.is_plain_text_file = True
         
         return metrics
-
+    """
     def _count_non_blank_lines(self, content: str) -> int:
-        """Count lines that contain at least one non-whitespace character"""
+        #Count lines that contain at least one non-whitespace character
         return len([line for line in content.splitlines() if line.strip()])
 
     def _calculate_shannon_entropy(self, content: str) -> float:
-        """Calculate Shannon entropy of the content.
-            Entropy measures the amount of information/randomness in the data.
-
-            Formula: H = -Σ(p(x) * log2(p(x)))
-            where p(x) is the probability of character x"""
+        #Calculate Shannon entropy of the content.
+        #    Entropy measures the amount of information/randomness in the data.
+        #    Formula: H = -Σ(p(x) * log2(p(x)))
+        #    where p(x) is the probability of character x
         
         if not content:
             return 0.0
@@ -117,12 +121,12 @@ class GenericAnalyzer:
         return entropy
     
     def _compute_whitespace_ratio(self, content: str) -> Tuple[float, int, int]:
-        """Calculate the ratio of whitespace to printable characters.
+        #Calculate the ratio of whitespace to printable characters.
         
-            Ratio = W / P
-            where:
-            - W = number of whitespace characters (spaces, tabs, newlines)
-            - P = number of printable (non-whitespace) characters"""
+        #    Ratio = W / P
+        #    where:
+        #    - W = number of whitespace characters (spaces, tabs, newlines)
+        #    - P = number of printable (non-whitespace) characters
         
         whitespace_count = sum(1 for c in content if c.isspace())
         printable_count = len(content) - whitespace_count
@@ -132,12 +136,13 @@ class GenericAnalyzer:
         return ratio, whitespace_count, printable_count
     
     def _detect_minified_code(self, longest_line: int, whitespace_count: int, num_lines: int) -> bool:
-        """Detect if code is minified based on heuristics"""
+        #Detect if code is minified based on heuristics
         return (longest_line > 500 or whitespace_count == 0) and num_lines < 2
     
     def _unminify_code(self, content: str) -> str:
-        """Unminify JavaScript code using jsbeautifier"""
+        #Unminify JavaScript code using jsbeautifier
         try:
             return jsbeautifier.beautify(content)
         except Exception:
             return ""
+    """

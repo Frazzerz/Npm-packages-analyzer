@@ -6,6 +6,7 @@ class CryptoMetrics:
     crypto_addresses: int = 0
     list_crypto_addresses: List[str] = field(default_factory=list)
     len_list_crypto_addresses_unique: int = 0
+    """
     cryptocurrency_name: int = 0
     list_cryptocurrency_names: List[str] = field(default_factory=list)
     len_list_cryptocurrency_names_unique: int = 0
@@ -14,3 +15,4 @@ class CryptoMetrics:
     replaced_crypto_addresses: int = 0
     replaced_crypto_addresses_list: List[str] = field(default_factory=list)
     hook_provider: int = 0
+    """

@@ -4,8 +4,10 @@ from utils import UtilsForAnalyzer
 from models.domains import ExfiltrationMetrics
 from utils import synchronized_print
 
+#TEST
+
 class ExfiltrationAnalyzer:
-    """Analyze data exfiltration & command and control techniques"""
+    #Analyze data exfiltration & command and control techniques
     
     SCAN_FUNCTIONS_PATTERNS: List[Pattern] = [
         #re.compile(r'(\w+)\.(get)?homedir\s*\(?\s*\)?\s*', re.IGNORECASE),

@@ -9,19 +9,10 @@ class FileTypeDetector:
     
     # Plain text files
     VALID_TYPES = {
-        # Executable code / scripts
         'javascript', 'typescript', 'coffeescript',
-        'shell', 'txt',
-        'c', 'cpp', 'python', 'ruby', 'php', 'lua', 
-        
-        # Config, manifest, build/deploy scripts
-        'json', 'jsonl',
-        'yaml', 'toml', 'ini', 'xml',
-        'dockerfile', 'makefile', 'cmake',
-        'gitmodules', 'gitattributes',
-        
-        # Readme.md
-        'markdown', 'empty',
+        'shell', 'c', 'cpp', 'python', 
+        'json', 'jsonl', 'yaml', 'ini',
+        'markdown', # possibile presenza di ind. crypto nel README o CHANGELOG
     }
     
     @classmethod
