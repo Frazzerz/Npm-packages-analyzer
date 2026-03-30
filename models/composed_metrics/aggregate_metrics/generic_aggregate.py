@@ -12,7 +12,9 @@ class GenericVersion:
     """
     list_plain_text_files: List[str] = field(default_factory=list)
     total_dim_plain_text_files: int = 0                         # to be computed after aggregation
+    """
     total_other_files: int = 0                                  # to be computed after aggregation
+    """
     list_other_files: List[str] = field(default_factory=list)
     total_dim_bytes_other_files: int = 0                        # to be computed after aggregation
 
